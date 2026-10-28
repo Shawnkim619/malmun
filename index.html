@@ -449,6 +449,7 @@ function aiFail(e){
   if(c==="bad_key") toast("API 키가 맞지 않아요. 설정에서 다시 넣어주세요");
   else if(c==="rate_limited") toast("무료 사용량을 잠깐 넘었어요. 1분 뒤 다시 해주세요");
   else if(c==="network") toast("인터넷 연결을 확인해주세요");
+  else if(c==="timeout") toast("AI가 응답하지 않아요. 잠시 후 다시 해주세요");
   else if(e && e.code==="rate_limited") toast("요청이 많아요. 잠시 후 다시 해주세요");
   else toast("AI 응답을 못 받았어요. 다시 눌러주세요");
 }
@@ -1080,28 +1081,32 @@ const getKey = () => { try { return localStorage.getItem(AKEY) || "" } catch (e)
 let goodModel = null;
 function makeAI(key){
   if(!key) return null;
-  const call = async (model, prompt) => {
-    let res;
+  const call = async (model, prompt, think) => {
+    let res; const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 25000);
+    const gc = { temperature: 0.4, responseMimeType: "application/json" };
+    if(think) gc.thinkingConfig = { thinkingBudget: 0 };
     try{
       res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
+        method: "POST", signal: ctl.signal,
         headers: { "content-type": "application/json", "x-goog-api-key": key },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, responseMimeType: "application/json" } })
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: gc })
       });
-    }catch(e){ throw { code: "network" } }
+    }catch(e){ clearTimeout(tm); throw { code: e && e.name === "AbortError" ? "timeout" : "network", message: model } }
+    clearTimeout(tm);
     if(res.ok) return res.json();
     let msg = ""; try{ msg = (await res.json()).error?.message || "" }catch(e){}
-    if(res.status === 404 || /not found|not supported/i.test(msg)) throw { code: "no_model" };
-    if(res.status === 429) throw { code: "rate_limited" };
-    if(res.status === 401 || res.status === 403 || /API key|API_KEY/i.test(msg)) throw { code: "bad_key" };
-    throw { code: "api_error", message: msg };
+    if(think && res.status === 400 && /think/i.test(msg)) return call(model, prompt, false);
+    if(res.status === 404 || /not found|not supported/i.test(msg)) throw { code: "no_model", message: model };
+    if(res.status === 429) throw { code: "rate_limited", message: model + ": " + msg };
+    if(res.status === 401 || res.status === 403 || /API key|API_KEY/i.test(msg)) throw { code: "bad_key", message: msg };
+    throw { code: "api_error", message: model + " " + res.status + ": " + msg };
   };
   const json = async (prompt) => {
     const order = goodModel ? [goodModel, ...AI_MODELS.filter(m => m !== goodModel)] : AI_MODELS;
     let d = null, last = null;
     for(const m of order){
-      try{ d = await call(m, prompt); goodModel = m; break }
-      catch(e){ last = e; if(e.code !== "no_model") throw e }
+      try{ d = await call(m, prompt, true); goodModel = m; break }
+      catch(e){ last = e; if(e.code === "bad_key" || e.code === "network") throw e }
     }
     if(!d) throw last || { code: "api_error" };
     const t = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
@@ -1172,7 +1177,7 @@ $("#key-save").onclick = async () => {
     await makeAI(k).json('Reply with only this JSON: {"ok":true}');
     try{ localStorage.setItem(AKEY, k) }catch(e){}
     setAI(); keyState(); $("#api-key").value = ""; toast("AI 코칭이 켜졌어요");
-  }catch(e){ aiFail(e) }
+  }catch(e){ aiFail(e); $("#key-state").textContent = "연결 실패: " + (e.code || "") + (e.message ? " · " + String(e.message).slice(0, 160) : "") }
   b.disabled = false; b.textContent = "저장하고 연결 확인";
 };
 setAI();

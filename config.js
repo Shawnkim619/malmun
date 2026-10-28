@@ -13,4 +13,4 @@ export const firebaseConfig = {
 
 // AI 코칭: Google Gemini 무료 API. 앞에서부터 차례로 시도해요.
 // 구글이 모델 이름을 바꾸면 여기만 고치면 돼요.
-export const AI_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest", "gemini-2.0-flash"];
+export const AI_MODELS = ["gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
