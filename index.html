@@ -171,6 +171,16 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
 .said .w-miss{color:var(--bad);text-decoration:underline dotted}
 .ans{display:flex;flex-direction:column;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
 .ans textarea{min-height:56px}
+.vrow{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.vrow input[type=checkbox]{width:18px;height:18px;padding:0;margin:4px 0 0;flex:0 0 auto;accent-color:var(--accent)}
+.vrow .b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-weight:400;color:var(--ink);cursor:pointer}
+.vrow .b .ko{font-size:14px}
+.vrow .b .en{font-family:var(--f-display);font-size:18px;line-height:1.4;overflow-wrap:anywhere}
+.vrow .b .tag{align-self:flex-start}
+.sug{display:flex;gap:8px;align-items:flex-start}
+.sug .b{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.sug .en{font-family:var(--f-display);font-size:18px;line-height:1.4;overflow-wrap:anywhere}
+.sug .meta{font-size:12px;color:var(--muted)}
 .filters{display:flex;flex-direction:column;gap:8px}
 .seg.small{padding:3px;border-radius:10px}
 .seg.small button{padding:6px;font-size:13px;border-radius:8px}
@@ -521,6 +531,7 @@ function base(type){
 async function saveSentence(fields){
   const it={...base("sentence"),...fields};
   await put(it); resetForms(); toast(it.en?"문장을 저장했어요":"저장했어요. 영어는 나중에 채워도 돼요");
+  return it;
 }
 
 $("#s-plain").onclick=()=>{
@@ -548,7 +559,9 @@ Reply with ONLY a JSON object, no markdown:
  "fixed": "their attempt with the minimum corrections needed (only when verdict is fix, else empty string)",
  "suggestions": [ {"en":"a natural sentence they can say as-is","tone":"캐주얼|무난|정중","note":"Korean, under 20 chars, when to use it"} ]  // exactly 2, different tones
  "situation": "Korean, under 15 chars, short label for the situation",
- "category": one of: ${CAT_GUIDE}. Return only the category name.
+ "category": one of: ${CAT_GUIDE}. Return only the category name.,
+ "pattern": "Korean, under 40 chars: the reusable core pattern of the best sentence with its meaning, e.g. I thought I'd ~ : ~할 줄 알았어",
+ "variants": [ {"vtype":"주어 바꾸기|질문형|부정형|시제 바꾸기","ko":"natural Korean","en":"natural spoken English reusing the same pattern"} ]  // exactly 2, different vtypes
 }`;
   try{
     const r = await sample.json(prompt,{modelTier:"quick"});
@@ -565,6 +578,8 @@ function renderCoach(input,r){
   if(pick<0) pick=0;
   let cat = okCat(r.category);
   const sit = input.sit || r.situation || "";
+  const vars=(r.variants||[]).filter(v=>v&&v.en&&v.ko).slice(0,2);
+  const vsel=vars.map(()=>true);
   const box=$("#coach");
   const draw=()=>{
     box.innerHTML=`<div class="coach">
@@ -576,6 +591,13 @@ function renderCoach(input,r){
           <button class="icon" type="button" data-spk="${i}" aria-label="발음 듣기">${ICON_SPK}</button>
         </div>`).join("")}
       </div>
+      ${vars.length?`<h2>응용 문장 <small style="font-weight:400">같이 카드로 묶여요</small></h2>
+      ${r.pattern?`<div class="pattern">${esc(r.pattern)}</div>`:""}
+      <div class="deck" style="gap:8px">${vars.map((v,i)=>`<div class="vrow">
+        <input type="checkbox" id="vchk-${i}" data-vi="${i}" ${vsel[i]?"checked":""} aria-label="응용 문장 저장">
+        <label class="b" for="vchk-${i}"><span class="tag ai">${esc(v.vtype||"응용")}</span><span class="ko">${esc(v.ko)}</span><span class="en">${esc(v.en)}</span></label>
+        <button class="icon" type="button" data-vspk="${i}" aria-label="발음 듣기">${ICON_SPK}</button>
+      </div>`).join("")}</div>`:""}
       <h2>카테고리</h2>
       <div class="cats">${CAT_NAMES.map(c=>`<button type="button" class="cat" data-cat="${c}" aria-pressed="${c===cat}">${c}</button>`).join("")}</div>
       <button class="btn" type="button" id="coach-save">이 표현으로 저장</button>
@@ -587,10 +609,15 @@ function renderCoach(input,r){
     });
     box.querySelectorAll("[data-spk]").forEach(b=>b.onclick=()=>speak(opts[+b.dataset.spk].en));
     box.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{ cat=b.dataset.cat; draw() });
-    $("#coach-save").onclick=()=>{
+    box.querySelectorAll("[data-vi]").forEach(c=>c.onchange=()=>{ vsel[+c.dataset.vi]=c.checked });
+    box.querySelectorAll("[data-vspk]").forEach(b=>b.onclick=()=>speak(vars[+b.dataset.vspk].en));
+    $("#coach-save").onclick=async()=>{
       const chosen=opts[pick];
       const alts=opts.filter((o,i)=>i!==pick && o.src!=="mine").map(o=>o.en);
-      saveSentence({ko:input.ko,en:chosen.en,sit,cat,alts,note:r.feedback||"",mine:input.en||""});
+      const parent=await saveSentence({ko:input.ko,en:chosen.en,sit,cat,alts,note:r.feedback||"",mine:input.en||"",pattern:r.pattern||""});
+      const keep=vars.filter((v,i)=>vsel[i]);
+      for(const [n,v] of keep.entries()) await put({id:uid(),type:"sentence",ko:v.ko,en:v.en,vtype:v.vtype,sit,cat,parentId:parent.id,box:0,due:ymd(today()),created:Date.now()+n+1});
+      if(keep.length) toast(`문장과 응용 ${keep.length}개를 저장했어요`);
     };
   };
   draw();
@@ -930,7 +957,7 @@ function renderDPanel(){
     const go_=async ai=>{
       const text=$("#d-txt").value.trim(); if(!text){ $("#d-txt").focus(); return }
       const n={...(e||{id:"d-"+dSel,type:"diary",date:dSel,created:Date.now()}),text};
-      if(e && e.text!==text){ delete n.fixed; delete n.ko; delete n.note; delete n.carded }
+      if(e && e.text!==text){ delete n.fixed; delete n.ko; delete n.note; delete n.carded; delete n.sugs; delete n.cardedSugs }
       dEdit=false;
       if(ai) await correct(n); else { upsertLocal(n); await put(n); renderDiary(); toast("일기를 저장했어요") }
     };
@@ -946,10 +973,11 @@ function renderDPanel(){
     ${e.fixed&&e.fixed!==e.text?`<div class="fixed">${esc(e.fixed)}</div>`:""}
     ${e.ko?`<div class="ko">${esc(e.ko)}</div>`:""}
     ${e.note?`<div class="fb">${esc(e.note)}</div>`:""}
+    ${(e.sugs||[]).length?`<h2>이렇게도 말해요</h2>${e.sugs.map((x,i)=>`<div class="sug"><div class="b"><div class="en">${esc(x.en)}</div>${x.note?`<div class="meta">${esc(x.note)}</div>`:""}</div><button class="icon" type="button" data-sspk="${i}" aria-label="발음 듣기">${ICON_SPK}</button>${(e.cardedSugs||[]).includes(i)?"":`<button class="icon" type="button" data-scard="${i}" aria-label="복습 카드로">${ICON_VAR}</button>`}</div>`).join("")}`:""}
     <div class="tools">
       <button class="chip" type="button" id="d-spk">${ICON_SPK}발음</button>
       <button class="chip" type="button" id="d-edit">수정</button>
-      ${sample&&!e.fixed?`<button class="chip" type="button" id="d-fix">AI 교정</button>`:""}
+      ${sample&&(!e.fixed||!e.sugs)?`<button class="chip" type="button" id="d-fix">${e.fixed?"추천 표현 받기":"AI 교정"}</button>`:""}
       ${e.carded?`<span class="meta" style="font-size:12px;color:var(--muted);align-self:center">복습 카드에 있어요</span>`:`<button class="chip" type="button" id="d-card">${ICON_VAR}복습 카드로</button>`}
     </div>
   </div>`;
@@ -957,6 +985,8 @@ function renderDPanel(){
   $("#d-edit").onclick=()=>{ dEdit=true; renderDPanel() };
   if($("#d-fix")) $("#d-fix").onclick=()=>correct({...e});
   if($("#d-card")) $("#d-card").onclick=()=>diaryToCard(e);
+  $("#dpanel").querySelectorAll("[data-sspk]").forEach(b=>b.onclick=()=>speak(e.sugs[+b.dataset.sspk].en));
+  $("#dpanel").querySelectorAll("[data-scard]").forEach(b=>b.onclick=()=>sugToCard(e,+b.dataset.scard));
 }
 async function correct(n){
   $("#dpanel").innerHTML=`<div class="dcard"><div class="wait"><span class="spin"></span>일기를 살펴보는 중...</div></div>`;
@@ -967,10 +997,16 @@ Reply with ONLY JSON:
 {"fixed":"the diary rewritten as natural everyday American English, keeping their meaning and voice; change as little as needed; translate any Korean parts",
  "ko":"natural Korean translation of the fixed version",
  "note":"Korean, 1-2 short sentences: one thing they did well and the single most useful correction, quoting the English",
+ "suggestions":[{"en":"another natural way a native speaker would say the same thing (more idiomatic or more casual)","note":"Korean, under 20 chars, nuance"}],  // exactly 2
  "category": one of: ${CAT_GUIDE} (name only)}`,{modelTier:"quick"});
-    Object.assign(n,{fixed:r.fixed||n.text,ko:r.ko||"",note:r.note||"",cat:okCat(r.category)});
+    Object.assign(n,{fixed:r.fixed||n.text,ko:r.ko||"",note:r.note||"",cat:okCat(r.category),sugs:(r.suggestions||[]).filter(x=>x&&x.en).slice(0,2).map(x=>({en:String(x.en),note:String(x.note||"")}))});
   }catch(err){ aiFail(err) }
   upsertLocal(n); await put(n); renderDiary();
+}
+async function sugToCard(e,i){
+  const x=e.sugs[i]; const [,m,d]=e.date.split("-").map(Number);
+  await put({id:uid(),type:"sentence",ko:e.ko||"(일기 표현)",en:x.en,mine:e.text,sit:`${m}/${d} 일기`,cat:e.cat||"대화",box:0,due:ymd(today()),created:Date.now()});
+  const n={...e,cardedSugs:[...(e.cardedSugs||[]),i]}; upsertLocal(n); await put(n); renderDiary(); toast("복습 카드로 만들었어요");
 }
 async function diaryToCard(e){
   let ko=e.ko, cat=e.cat;
