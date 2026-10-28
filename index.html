@@ -30,6 +30,7 @@
   --accent:#7C9BFF; --accent-soft:#1F2B48; --mark:#8C7A1E;
   --good:#4CC28B; --mid:#E2AB3E; --bad:#F07465; color-scheme:dark}
 
+[hidden]{display:none!important}
 html,body{height:100%}
 body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
 .wrap{max-width:520px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-block:18px 110px;display:flex;flex-direction:column;gap:18px}
@@ -163,11 +164,13 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
 .dcard .fb{font-size:14px}
 .dcard textarea{min-height:84px}
 
-.hright{display:flex;align-items:center;gap:4px}
+.hright{display:flex;align-items:center;gap:2px;min-width:0}
 .gear svg{width:20px;height:20px}
 .said{font-size:13px;color:var(--muted)}
 .said .w-ok{color:var(--good);font-weight:600}
 .said .w-miss{color:var(--bad);text-decoration:underline dotted}
+.ans{display:flex;flex-direction:column;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.ans textarea{min-height:56px}
 .filters{display:flex;flex-direction:column;gap:8px}
 .seg.small{padding:3px;border-radius:10px}
 .seg.small button{padding:6px;font-size:13px;border-radius:8px}
@@ -218,10 +221,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
 <div class="wrap">
   <header>
     <h1>Malmun<b>말문 노트</b></h1>
-    <div class="hright">
-      <div class="stat"><div id="stat"></div><div class="sync" id="sync">이 기기에 저장 중</div></div>
-      <button class="icon gear" type="button" id="open-set" aria-label="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
-    </div>
+    <div class="hright"><div class="stat"><div id="stat"></div><div class="sync" id="sync">이 기기에 저장 중</div></div><button class="icon gear" type="button" id="open-set" aria-label="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
   </header>
 
   <!-- 기록 -->
@@ -321,14 +321,20 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
     <h2>동기화</h2>
     <div id="acct" class="row"></div>
     <h2 style="margin-top:8px">AI 코칭</h2>
-    <p>Anthropic API 키를 넣으면 코칭, 응용, 일기 교정, 자동 분류가 켜져요. 키는 이 기기에만 저장되고 GitHub에는 올라가지 않아요.</p>
-    <input id="api-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+    <p>무료 Gemini API 키를 넣으면 코칭, 응용, 일기 교정, 자동 분류가 켜져요. 카드 등록 없이 무료이고, 키는 이 기기에만 저장돼요.</p>
+    <input id="api-key" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
     <div class="row">
       <button class="btn" type="button" id="key-save">저장하고 연결 확인</button>
       <button class="btn plain" type="button" id="key-clear">키 지우기</button>
     </div>
     <p class="tip" id="key-state"></p>
-    <a class="btn ghost" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">API 키 발급 페이지 열기</a>
+    <a class="btn ghost" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">무료 키 받기 (Google AI Studio)</a>
+    <h2 style="margin-top:8px">백업</h2>
+    <p>claude.ai 버전에서 받은 백업 파일(CSV)을 불러와 기록을 옮길 수 있어요.</p>
+    <div class="row">
+      <label class="btn ghost" style="flex-direction:row;justify-content:center;color:var(--accent);font-size:15px">백업 불러오기<input type="file" id="imp" accept=".csv,text/csv" hidden></label>
+      <button class="btn plain" type="button" id="exp">백업 받기</button>
+    </div>
     <button class="btn plain" type="button" id="set-close">닫기</button>
   </div>
 </div>
@@ -364,7 +370,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-import { firebaseConfig, AI_MODEL } from "./config.js";
+import { firebaseConfig, AI_MODELS } from "./config.js";
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 
@@ -441,7 +447,7 @@ function refreshAIButtons(){
 function aiFail(e){
   const c=e&&e.code;
   if(c==="bad_key") toast("API 키가 맞지 않아요. 설정에서 다시 넣어주세요");
-  else if(c==="no_credit") toast("API 크레딧이 없어요. Anthropic 콘솔에서 충전해주세요");
+  else if(c==="rate_limited") toast("무료 사용량을 잠깐 넘었어요. 1분 뒤 다시 해주세요");
   else if(c==="network") toast("인터넷 연결을 확인해주세요");
   else if(e && e.code==="rate_limited") toast("요청이 많아요. 잠시 후 다시 해주세요");
   else toast("AI 응답을 못 받았어요. 다시 눌러주세요");
@@ -469,28 +475,16 @@ function openSheet(text){
 }
 $("#sh-close").onclick=()=>$("#sheet").hidden=true;
 $("#sheet").onclick=e=>{ if(e.target.id==="sheet") $("#sheet").hidden=true };
-const ICON_SPK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
-
-/* ---------- 말로 답하기 (음성인식) ---------- */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const ICON_MIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-const norm = t => t.toLowerCase().replace(/[^a-z0-9' ]/g," ").split(/\s+/).filter(Boolean);
-let said = { id: null, html: "" };
-function listen(onText){
-  if(!SR){ toast("이 브라우저는 음성인식을 지원하지 않아요. Chrome에서 열어주세요"); return }
-  try{
-    const r = new SR(); r.lang = "en-US"; r.interimResults = false; r.maxAlternatives = 1;
-    r.onresult = e => onText(e.results[0][0].transcript);
-    r.onerror = ev => toast(ev.error === "not-allowed" ? "마이크 권한을 허용해주세요" : "잘 못 들었어요. 다시 말해보세요");
-    r.start(); toast("듣는 중... 영어로 말해보세요");
-  }catch(e){ toast("마이크를 시작하지 못했어요") }
-}
+const norm = t => String(t||"").toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9' ]/g," ").split(/\s+/).filter(Boolean);
+let said = { id: null, html: "" }, answering = null;
 function compareHTML(target, heard){
   const got = new Set(norm(heard)), tw = norm(target);
   const hit = tw.filter(w => got.has(w)).length, pct = tw.length ? Math.round(hit / tw.length * 100) : 0;
   const marked = target.split(/(\s+)/).map(tok => { const n = norm(tok)[0]; if(!n) return esc(tok); return `<span class="${got.has(n)?"w-ok":"w-miss"}">${esc(tok)}</span>` }).join("");
-  return `<div class="said">내가 말한 것: “${esc(heard)}” · 일치 ${pct}%</div><div class="said">${marked}</div>`;
+  return `<div class="said">내 답: “${esc(heard)}” · 일치 ${pct}%</div><div class="said">${marked}</div>`;
 }
+const ICON_SPK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
 
 /* ---------- 탭 ---------- */
 const views={add:"#v-add",diary:"#v-diary",review:"#v-review",list:"#v-list"};
@@ -709,11 +703,16 @@ function cardHTML(it,rightLabel){
     </div>
     <div class="tools">
       <button class="chip star" type="button" id="star" aria-pressed="${!!it.star}">${ICON_STAR}별표</button>
-      ${s&&SR?`<button class="chip" type="button" id="mic">${ICON_MIC}말로 답하기</button>`:""}
+      ${s&&!flipped&&answering!==it.id?`<button class="chip" type="button" id="ans-open">${ICON_MIC}말로 답하기</button>`:""}
       ${(!s||flipped)?`<button class="chip" type="button" id="spk">${ICON_SPK}발음</button><button class="chip" type="button" id="slow">천천히</button>`:""}
       ${!s&&flipped&&it.ex?`<button class="chip" type="button" id="spk-ex">${ICON_SPK}예문</button>`:""}
       ${s&&flipped&&!it.parentId&&(sample||kids.length)?`<button class="chip" type="button" id="var">${ICON_VAR}응용${kids.length?" "+kids.length:""}</button>`:""}
-    </div>`;
+    </div>
+    ${s&&!flipped&&answering===it.id?`<div class="ans">
+      <label>영어로 답하기 <small>키보드의 마이크를 누르고 말해도 돼요</small>
+        <textarea id="ans-txt" class="en" placeholder="Say it in English..."></textarea></label>
+      <div class="row"><button class="btn" type="button" id="ans-check">맞춰보기</button><button class="btn plain" type="button" id="ans-cancel">취소</button></div>
+    </div>`:""}`;
 }
 function bindCard(it,{toggle}){
   const card=$("#card");
@@ -738,7 +737,9 @@ function bindCard(it,{toggle}){
   if($("#slow")) $("#slow").onclick=()=>speak(it.en,true);
   if($("#spk-ex")) $("#spk-ex").onclick=()=>speak(it.ex);
   if($("#var")) $("#var").onclick=()=>openVariants(it);
-  if($("#mic")) $("#mic").onclick=()=>listen(t=>{ said={id:it.id,html:compareHTML(it.en,t)}; flipped=true; renderCard() });
+  if($("#ans-open")) $("#ans-open").onclick=()=>{ answering=it.id; renderCard(); const t=$("#ans-txt"); if(t) t.focus() };
+  if($("#ans-cancel")) $("#ans-cancel").onclick=()=>{ answering=null; renderCard() };
+  if($("#ans-check")) $("#ans-check").onclick=()=>{ const v=$("#ans-txt").value.trim(); if(!v){ $("#ans-txt").focus(); return } said={id:it.id,html:compareHTML(it.en,v)}; answering=null; flipped=true; renderCard(); speak(it.en) };
 }
 function move(d){
   if(mode==="browse"){ const n=bIdx+d; if(n<0||n>=browse.length) return; bIdx=n }
@@ -1073,29 +1074,40 @@ Reply with ONLY a JSON object mapping each id to a category name.`,{modelTier:"q
   btn.disabled=false; btn.textContent="AI 분류";
 };
 
-/* ---------- AI: Anthropic API (키는 이 기기에만) ---------- */
-const AKEY = "malmun.apikey";
+/* ---------- AI: Google Gemini 무료 API (키는 이 기기에만) ---------- */
+const AKEY = "malmun.geminikey";
 const getKey = () => { try { return localStorage.getItem(AKEY) || "" } catch (e) { return "" } };
+let goodModel = null;
 function makeAI(key){
   if(!key) return null;
-  const json = async (prompt) => {
+  const call = async (model, prompt) => {
     let res;
     try{
-      res = await fetch("https://api.anthropic.com/v1/messages", {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-        body: JSON.stringify({ model: AI_MODEL, max_tokens: 1200, messages: [{ role: "user", content: prompt }] })
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, responseMimeType: "application/json" } })
       });
     }catch(e){ throw { code: "network" } }
-    if(res.status === 401 || res.status === 403) throw { code: "bad_key" };
+    if(res.ok) return res.json();
+    let msg = ""; try{ msg = (await res.json()).error?.message || "" }catch(e){}
+    if(res.status === 404 || /not found|not supported/i.test(msg)) throw { code: "no_model" };
     if(res.status === 429) throw { code: "rate_limited" };
-    if(res.status === 402 || res.status === 400){ let m=""; try{ m=(await res.json()).error?.message||"" }catch(e){}; throw { code: /credit|billing/i.test(m) ? "no_credit" : "api_error", message: m } }
-    if(!res.ok) throw { code: "api_error" };
-    const d = await res.json();
-    const t = (d.content || []).map(c => c.text || "").join("");
-    const m = t.match(/[\[{][\s\S]*[\]}]/);
-    if(!m) throw { code: "invalid_json" };
-    try{ return JSON.parse(m[0]) }catch(e){ throw { code: "invalid_json" } }
+    if(res.status === 401 || res.status === 403 || /API key|API_KEY/i.test(msg)) throw { code: "bad_key" };
+    throw { code: "api_error", message: msg };
+  };
+  const json = async (prompt) => {
+    const order = goodModel ? [goodModel, ...AI_MODELS.filter(m => m !== goodModel)] : AI_MODELS;
+    let d = null, last = null;
+    for(const m of order){
+      try{ d = await call(m, prompt); goodModel = m; break }
+      catch(e){ last = e; if(e.code !== "no_model") throw e }
+    }
+    if(!d) throw last || { code: "api_error" };
+    const t = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+    const mm = t.match(/[\[{][\s\S]*[\]}]/);
+    if(!mm) throw { code: "invalid_json" };
+    try{ return JSON.parse(mm[0]) }catch(e){ throw { code: "invalid_json" } }
   };
   return { json };
 }
@@ -1164,6 +1176,57 @@ $("#key-save").onclick = async () => {
   b.disabled = false; b.textContent = "저장하고 연결 확인";
 };
 setAI();
+
+/* ---------- 백업 불러오기 / 받기 ---------- */
+function parseCSV(text){
+  const rows = []; let row = [], cell = "", q = false;
+  text = text.replace(/^\ufeff/, "");
+  for(let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if(q){ if(ch === '"'){ if(text[i+1] === '"'){ cell += '"'; i++ } else q = false } else cell += ch }
+    else if(ch === '"') q = true;
+    else if(ch === ","){ row.push(cell); cell = "" }
+    else if(ch === "\n" || ch === "\r"){ if(ch === "\r" && text[i+1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = "" }
+    else cell += ch;
+  }
+  if(cell || row.length){ row.push(cell); rows.push(row) }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+$("#imp").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  const rows = parseCSV(await f.text()); const head = rows.shift() || [];
+  if(head[0] !== "종류"){ toast("말문 노트 백업 파일이 아니에요"); return }
+  const t = ymd(today()); let n = 0, skip = 0;
+  const have = new Set(items.map(i => (i.type + "|" + (i.en || i.text || "") + "|" + (i.date || "")).toLowerCase()));
+  for(const [kind, en, ko, extra, cat, star, lapses, due, date] of rows){
+    let it;
+    if(kind === "일기"){
+      const orig = extra && extra.startsWith("원문: ") ? extra.slice(4) : "";
+      it = { id: "d-" + date, type: "diary", date, text: orig || en, fixed: orig ? en : "", ko, cat: cat || undefined, created: Date.now() + n };
+    } else {
+      const word = kind === "단어";
+      it = { id: uid(), type: word ? "word" : "sentence", en, ko, cat: cat || undefined, star: star === "★" || undefined, lapses: +lapses || 0, due: due || t, box: 0, created: date ? new Date(date + "T12:00:00").getTime() + n : Date.now() + n };
+      if(word) it.ex = extra; else it.sit = extra;
+      if(+lapses) it.reviews = +lapses;
+    }
+    const k = (it.type + "|" + (it.en || it.text || "") + "|" + (it.date || "")).toLowerCase();
+    if(have.has(k)){ skip++; continue }
+    have.add(k); upsertLocal(clean(it)); await put(clean(it)); n++;
+  }
+  items = items.filter(i => !i.sample || !n); if(!col) local.save(items);
+  refresh(); toast(`${n}개를 불러왔어요${skip ? ` (겹치는 ${skip}개 제외)` : ""}`);
+};
+$("#exp").onclick = () => {
+  const cell = v => { const x = String(v ?? ""); return /[",\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x };
+  const rows = [["종류","영어","한국어","상황/예문","카테고리","별표","틀린 횟수","다음 복습","날짜"]];
+  items.filter(i => !i.sample).forEach(i => {
+    if(i.type === "diary") rows.push(["일기", i.fixed || i.text, i.ko || "", i.fixed && i.fixed !== i.text ? "원문: " + i.text : "", i.cat || "", "", "", "", i.date]);
+    else rows.push([i.type === "word" ? "단어" : (i.parentId ? "응용" : "문장"), i.en || "", i.ko || "", i.type === "word" ? (i.ex || "") : (i.sit || ""), i.cat || "", i.star ? "★" : "", i.lapses || 0, i.due || "", i.created > 1e10 ? ymd(new Date(i.created)) : ""]);
+  });
+  const blob = new Blob(["\ufeff" + rows.map(r => r.map(cell).join(",")).join("\r\n")], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `malmun-backup-${ymd(today())}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
 renderStat();
 </script>
 
