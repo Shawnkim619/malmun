@@ -345,7 +345,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
       <label class="btn ghost" style="flex-direction:row;justify-content:center;color:var(--accent);font-size:15px">백업 불러오기<input type="file" id="imp" accept=".csv,text/csv" hidden></label>
       <button class="btn plain" type="button" id="exp">백업 받기</button>
     </div>
-    <p class="tip" style="text-align:center">앱 버전 10/27 23:34</p>
+    <p class="tip" style="text-align:center">앱 버전 10/28 00:06</p>
     <button class="btn plain" type="button" id="set-close">닫기</button>
   </div>
 </div>
@@ -1156,10 +1156,32 @@ function makeAI(key){
     if(!mm) throw { code: "invalid_json" };
     try{ return JSON.parse(mm[0]) }catch(e){ throw { code: "invalid_json" } }
   };
+  const listModels = async () => {
+    try{
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 10000);
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": key }, signal: ctl.signal });
+      clearTimeout(tm);
+      if(res.status === 400 || res.status === 401 || res.status === 403){ let m=""; try{ m=(await res.json()).error?.message||"" }catch(e){}; throw { code: "bad_key", message: m } }
+      if(!res.ok) return [];
+      const d = await res.json();
+      return (d.models || [])
+        .filter(m => (m.supportedGenerationMethods || []).includes("generateContent"))
+        .map(m => m.name.replace(/^models\//, ""))
+        .filter(n => /^gemini/.test(n) && /flash/.test(n) && !/(image|tts|audio|live|embed|vision|exp|native|computer|robotics)/.test(n));
+    }catch(e){ if(e.code === "bad_key") throw e; return [] }
+  };
+  const rank = n => (/lite/.test(n) ? 0 : 10) + (/preview/.test(n) ? 5 : 0) + (/latest/.test(n) ? 1 : 0) - (parseFloat((n.match(/gemini-(\d+(\.\d+)?)/) || [])[1] || 0));
   const probe = async () => {
-    const tries = AI_MODELS.map(async m => { const t0 = performance.now(); await call(m, 'Reply with only this JSON: {"ok":true}', true, 12000); return { m, ms: performance.now() - t0 } });
-    const ok = (await Promise.allSettled(tries)).filter(r => r.status === "fulfilled").map(r => r.value).sort((a, b) => a.ms - b.ms);
-    if(!ok.length){ const bad = (await Promise.allSettled(tries)).find(r => r.reason && r.reason.code === "bad_key"); throw bad ? bad.reason : { code: "no_model", message: "쓸 수 있는 무료 모델을 못 찾았어요" } }
+    const found = await listModels();
+    const cands = [...new Set([...found.sort((x, y) => rank(x) - rank(y)).slice(0, 6), ...AI_MODELS])];
+    const settled = await Promise.allSettled(cands.map(async m => { const t0 = performance.now(); await call(m, 'Reply with only this JSON: {"ok":true}', true, 15000); return { m, ms: performance.now() - t0 } }));
+    const ok = settled.filter(r => r.status === "fulfilled").map(r => r.value).sort((x, y) => x.ms - y.ms);
+    if(!ok.length){
+      const errs = settled.map(r => r.reason).filter(Boolean);
+      const bad = errs.find(e => e.code === "bad_key"); if(bad) throw bad;
+      const real = errs.find(e => e.code !== "no_model") || errs[0] || {};
+      throw { code: real.code || "no_model", message: (real.message || "") + ` (시도한 모델 ${cands.length}개, 목록에서 찾은 모델 ${found.length}개)` };
+    }
     goodModel = ok[0].m; try{ localStorage.setItem(MKEY, goodModel) }catch(e){}
     return ok[0];
   };
