@@ -1078,12 +1078,13 @@ Reply with ONLY a JSON object mapping each id to a category name.`,{modelTier:"q
 /* ---------- AI: Google Gemini 무료 API (키는 이 기기에만) ---------- */
 const AKEY = "malmun.geminikey";
 const getKey = () => { try { return localStorage.getItem(AKEY) || "" } catch (e) { return "" } };
-let goodModel = null;
+const MKEY = "malmun.geminimodel";
+let goodModel = (() => { try { return localStorage.getItem(MKEY) } catch (e) { return null } })();
 function makeAI(key){
   if(!key) return null;
-  const call = async (model, prompt, think) => {
-    let res; const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 25000);
-    const gc = { temperature: 0.4, responseMimeType: "application/json" };
+  const call = async (model, prompt, think, tmo) => {
+    let res; const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), tmo || 15000);
+    const gc = { temperature: 0.4, maxOutputTokens: 700, responseMimeType: "application/json" };
     if(think) gc.thinkingConfig = { thinkingBudget: 0 };
     try{
       res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -1095,7 +1096,7 @@ function makeAI(key){
     clearTimeout(tm);
     if(res.ok) return res.json();
     let msg = ""; try{ msg = (await res.json()).error?.message || "" }catch(e){}
-    if(think && res.status === 400 && /think/i.test(msg)) return call(model, prompt, false);
+    if(think && res.status === 400 && /think/i.test(msg)) return call(model, prompt, false, tmo);
     if(res.status === 404 || /not found|not supported/i.test(msg)) throw { code: "no_model", message: model };
     if(res.status === 429) throw { code: "rate_limited", message: model + ": " + msg };
     if(res.status === 401 || res.status === 403 || /API key|API_KEY/i.test(msg)) throw { code: "bad_key", message: msg };
@@ -1103,18 +1104,28 @@ function makeAI(key){
   };
   const json = async (prompt) => {
     const order = goodModel ? [goodModel, ...AI_MODELS.filter(m => m !== goodModel)] : AI_MODELS;
-    let d = null, last = null;
-    for(const m of order){
-      try{ d = await call(m, prompt, true); goodModel = m; break }
-      catch(e){ last = e; if(e.code === "bad_key" || e.code === "network") throw e }
-    }
+    let d = null, last = null; const t0 = Date.now();
+    const tick = setInterval(() => document.querySelectorAll(".wait").forEach(w => { let c = w.querySelector(".secs"); if(!c){ c = document.createElement("span"); c.className = "secs"; c.style.cssText = "margin-left:auto;font-family:var(--f-mono);font-size:12px"; w.appendChild(c) } c.textContent = Math.round((Date.now() - t0) / 1000) + "초" }), 500);
+    try{
+      for(const m of order){
+        try{ d = await call(m, prompt, true); if(goodModel !== m){ goodModel = m; try{ localStorage.setItem(MKEY, m) }catch(e){} } break }
+        catch(e){ last = e; if(e.code === "bad_key" || e.code === "network") throw e }
+      }
+    } finally { clearInterval(tick) }
     if(!d) throw last || { code: "api_error" };
     const t = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
     const mm = t.match(/[\[{][\s\S]*[\]}]/);
     if(!mm) throw { code: "invalid_json" };
     try{ return JSON.parse(mm[0]) }catch(e){ throw { code: "invalid_json" } }
   };
-  return { json };
+  const probe = async () => {
+    const tries = AI_MODELS.map(async m => { const t0 = performance.now(); await call(m, 'Reply with only this JSON: {"ok":true}', true, 12000); return { m, ms: performance.now() - t0 } });
+    const ok = (await Promise.allSettled(tries)).filter(r => r.status === "fulfilled").map(r => r.value).sort((a, b) => a.ms - b.ms);
+    if(!ok.length){ const bad = (await Promise.allSettled(tries)).find(r => r.reason && r.reason.code === "bad_key"); throw bad ? bad.reason : { code: "no_model", message: "쓸 수 있는 무료 모델을 못 찾았어요" } }
+    goodModel = ok[0].m; try{ localStorage.setItem(MKEY, goodModel) }catch(e){}
+    return ok[0];
+  };
+  return { json, probe };
 }
 function setAI(){
   sample = makeAI(getKey());
@@ -1174,9 +1185,11 @@ $("#key-save").onclick = async () => {
   if(!k){ $("#api-key").focus(); return }
   const b = $("#key-save"); b.disabled = true; b.textContent = "확인 중...";
   try{
-    await makeAI(k).json('Reply with only this JSON: {"ok":true}');
+    const best = await makeAI(k).probe();
     try{ localStorage.setItem(AKEY, k) }catch(e){}
-    setAI(); keyState(); $("#api-key").value = ""; toast("AI 코칭이 켜졌어요");
+    setAI(); keyState(); $("#api-key").value = "";
+    $("#key-state").textContent += ` · ${best.m} · ${(best.ms / 1000).toFixed(1)}초`;
+    toast("AI 코칭이 켜졌어요");
   }catch(e){ aiFail(e); $("#key-state").textContent = "연결 실패: " + (e.code || "") + (e.message ? " · " + String(e.message).slice(0, 160) : "") }
   b.disabled = false; b.textContent = "저장하고 연결 확인";
 };
