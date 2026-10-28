@@ -1,6 +1,6 @@
 // 말문 노트 service worker
 // 앱 파일은 "인터넷 먼저, 안 되면 저장본" 방식이라 새 버전을 올리면 다음에 열 때 바로 반영됩니다.
-const CACHE = "malmun-v1";
+const CACHE = "malmun-v3";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -35,7 +35,7 @@ self.addEventListener("fetch", (e) => {
   // 앱 파일: 인터넷 먼저, 실패하면 저장본
   if (url.origin === self.location.origin) {
     e.respondWith(
-      fetch(req).then((res) => {
+      fetch(req, { cache: "no-cache" }).then((res) => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
         return res;
       }).catch(() => caches.match(req).then((hit) => hit || caches.match("./index.html")))

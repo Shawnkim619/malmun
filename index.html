@@ -345,6 +345,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
       <label class="btn ghost" style="flex-direction:row;justify-content:center;color:var(--accent);font-size:15px">백업 불러오기<input type="file" id="imp" accept=".csv,text/csv" hidden></label>
       <button class="btn plain" type="button" id="exp">백업 받기</button>
     </div>
+    <p class="tip" style="text-align:center">앱 버전 10/27 23:34</p>
     <button class="btn plain" type="button" id="set-close">닫기</button>
   </div>
 </div>
@@ -382,7 +383,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signO
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { firebaseConfig, AI_MODELS } from "./config.js";
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").then(r => r.update()).catch(() => {});
 
 /* ---------- 카테고리 ---------- */
 const CATS = {
@@ -952,6 +953,7 @@ function renderDPanel(){
         ${sample?`<button class="btn" type="button" id="d-ai">저장하고 AI 교정</button>`:""}
         <button class="btn ${sample?"plain":""}" type="button" id="d-save">저장</button>
       </div>
+      ${sample?"":`<p class="ai-off" style="margin:0;font-size:12px;color:var(--muted)">오른쪽 위 톱니바퀴에서 무료 Gemini 키를 넣으면 AI 교정과 추천 표현이 나와요.</p>`}
       ${e?`<button class="btn plain" type="button" id="d-cancel">취소</button>`:""}
     </div>`;
     const go_=async ai=>{
