@@ -375,7 +375,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
       <label class="btn ghost" style="flex-direction:row;justify-content:center;color:var(--accent);font-size:15px">백업 불러오기<input type="file" id="imp" accept=".csv,text/csv" hidden></label>
       <button class="btn plain" type="button" id="exp">백업 받기</button>
     </div>
-    <p class="tip" style="text-align:center">앱 버전 11/03 20:52</p>
+    <p class="tip" style="text-align:center">앱 버전 11/03 20:55</p>
     <button class="btn plain" type="button" id="set-close">닫기</button>
   </div>
 </div>
@@ -1208,13 +1208,19 @@ Reply with ONLY a JSON object mapping each id to a category name.`,{modelTier:"q
 const AKEY = "malmun.geminikey";
 const getKey = () => { try { return localStorage.getItem(AKEY) || "" } catch (e) { return "" } };
 const MKEY = "malmun.geminimodel";
+const modeFor = {};
 let goodModel = (() => { try { return localStorage.getItem(MKEY) } catch (e) { return null } })();
 function makeAI(key){
   if(!key) return null;
   const call = async (model, prompt, think, tmo) => {
     let res; const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), tmo || 15000);
     const gc = { temperature: 0.4, maxOutputTokens: 700, responseMimeType: "application/json" };
-    if(think) gc.thinkingConfig = { thinkingBudget: 0 };
+    // 3: 생각 끔(2.x) → 2: 생각 짧게(3.x) → 1: 기본 → 0: JSON 모드도 끔
+    const mode = think === true ? 3 : (think || 0);
+    if(mode === 3) gc.thinkingConfig = { thinkingBudget: 0 };
+    if(mode === 2) gc.thinkingConfig = { thinkingLevel: "low" };
+    if(mode <= 2) gc.maxOutputTokens = 4096;
+    if(mode === 0) delete gc.responseMimeType;
     try{
       res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST", signal: ctl.signal,
@@ -1225,7 +1231,7 @@ function makeAI(key){
     clearTimeout(tm);
     if(res.ok) return res.json();
     let msg = ""; try{ msg = (await res.json()).error?.message || "" }catch(e){}
-    if(think && res.status === 400 && /think/i.test(msg)) return call(model, prompt, false, tmo);
+    if(res.status === 400 && mode > 0 && !/API key|API_KEY/i.test(msg)){ const r2 = await call(model, prompt, mode - 1, tmo); modeFor[model] = modeFor[model] ?? mode - 1; return r2 }
     if(res.status === 404 || /not found|not supported/i.test(msg)) throw { code: "no_model", message: model };
     if(res.status === 429) throw { code: "rate_limited", message: model + ": " + msg };
     if(res.status === 401 || res.status === 403 || /API key|API_KEY/i.test(msg)) throw { code: "bad_key", message: msg };
@@ -1237,7 +1243,7 @@ function makeAI(key){
     const tick = setInterval(() => document.querySelectorAll(".wait").forEach(w => { let c = w.querySelector(".secs"); if(!c){ c = document.createElement("span"); c.className = "secs"; c.style.cssText = "margin-left:auto;font-family:var(--f-mono);font-size:12px"; w.appendChild(c) } c.textContent = Math.round((Date.now() - t0) / 1000) + "초" }), 500);
     try{
       for(const m of order){
-        try{ d = await call(m, prompt, true); if(goodModel !== m){ goodModel = m; try{ localStorage.setItem(MKEY, m) }catch(e){} } break }
+        try{ d = await call(m, prompt, modeFor[m] ?? true); if(goodModel !== m){ goodModel = m; try{ localStorage.setItem(MKEY, m) }catch(e){} } break }
         catch(e){ last = e; if(e.code === "bad_key" || e.code === "network") throw e }
       }
     } finally { clearInterval(tick) }
