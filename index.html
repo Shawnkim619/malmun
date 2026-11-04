@@ -375,7 +375,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
       <label class="btn ghost" style="flex-direction:row;justify-content:center;color:var(--accent);font-size:15px">백업 불러오기<input type="file" id="imp" accept=".csv,text/csv" hidden></label>
       <button class="btn plain" type="button" id="exp">백업 받기</button>
     </div>
-    <p class="tip" style="text-align:center">앱 버전 11/03 20:55</p>
+    <p class="tip" style="text-align:center">앱 버전 11/03 20:58</p>
     <button class="btn plain" type="button" id="set-close">닫기</button>
   </div>
 </div>
@@ -493,7 +493,7 @@ function aiFail(e){
   else if(c==="network") toast("인터넷 연결을 확인해주세요");
   else if(c==="timeout") toast("AI가 응답하지 않아요. 잠시 후 다시 해주세요");
   else if(e && e.code==="rate_limited") toast("요청이 많아요. 잠시 후 다시 해주세요");
-  else toast("AI 응답을 못 받았어요. 다시 눌러주세요");
+  else toast("AI 응답을 못 받았어요 (" + (c || "?") + (e && e.message ? ": " + String(e.message).slice(0, 80) : "") + ")");
 }
 
 /* ---------- 발음 ---------- */
@@ -1214,7 +1214,7 @@ function makeAI(key){
   if(!key) return null;
   const call = async (model, prompt, think, tmo) => {
     let res; const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), tmo || 15000);
-    const gc = { temperature: 0.4, maxOutputTokens: 700, responseMimeType: "application/json" };
+    const gc = { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: "application/json" };
     // 3: 생각 끔(2.x) → 2: 생각 짧게(3.x) → 1: 기본 → 0: JSON 모드도 끔
     const mode = think === true ? 3 : (think || 0);
     if(mode === 3) gc.thinkingConfig = { thinkingBudget: 0 };
@@ -1244,14 +1244,16 @@ function makeAI(key){
     try{
       for(const m of order){
         try{ d = await call(m, prompt, modeFor[m] ?? true); if(goodModel !== m){ goodModel = m; try{ localStorage.setItem(MKEY, m) }catch(e){} } break }
-        catch(e){ last = e; if(e.code === "bad_key" || e.code === "network") throw e }
+        catch(e){ if(!last || last.code === "no_model" || e.code === "rate_limited") last = e; if(e.code === "bad_key" || e.code === "network") throw e }
       }
     } finally { clearInterval(tick) }
     if(!d) throw last || { code: "api_error" };
-    const t = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+    const cand = d.candidates?.[0] || {};
+    const t = (cand.content?.parts || []).filter(p => !p.thought).map(p => p.text || "").join("");
+    if(!t) throw { code: "empty", message: (goodModel || "") + " " + (cand.finishReason || d.promptFeedback?.blockReason || "빈 응답") };
     const mm = t.match(/[\[{][\s\S]*[\]}]/);
-    if(!mm) throw { code: "invalid_json" };
-    try{ return JSON.parse(mm[0]) }catch(e){ throw { code: "invalid_json" } }
+    if(!mm) throw { code: "invalid_json", message: (cand.finishReason || "") + " " + t.slice(0, 60) };
+    try{ return JSON.parse(mm[0]) }catch(e){ throw { code: "invalid_json", message: (cand.finishReason === "MAX_TOKENS" ? "답이 너무 길어 잘림" : "형식 오류") } }
   };
   const listModels = async () => {
     try{
