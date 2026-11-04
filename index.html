@@ -201,6 +201,18 @@ select{font:14px var(--f-body);color:var(--ink);background:var(--card);border:1p
 .star[aria-pressed="true"]{color:var(--mid)}
 .star[aria-pressed="true"] svg{fill:currentColor}
 .chip.star[aria-pressed="true"]{border-color:var(--mid)}
+.lhead{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.linkbtn{border:0;background:none;color:var(--accent);font:600 13px var(--f-body);cursor:pointer;padding:4px 0}
+mark{background:var(--mark);color:inherit;border-radius:2px}
+.list.compact .item{padding:7px 2px;gap:8px;align-items:center}
+.list.compact .item .t{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list.compact .item .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list.compact .item .m,.list.compact .item .icon:not(.star),.list.compact .badge{display:none}
+.list.compact .item .star{padding:2px}
+.list.compact .item.open{align-items:flex-start}
+.list.compact .item.open .t,.list.compact .item.open .s{white-space:normal}
+.list.compact .item.open .m,.list.compact .item.open .icon{display:revert}
+.gh .n{font-family:var(--f-mono);font-weight:500;margin-left:6px}
 .gh{font-size:12px;font-weight:600;color:var(--muted);padding:16px 2px 6px;letter-spacing:.04em;border-bottom:1px solid var(--line)}
 .lapse{color:var(--bad)}
 .var{border:1px solid var(--line);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
@@ -238,6 +250,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
   <section id="v-add" class="deck">
     <div class="seg" role="group" aria-label="기록 종류">
       <button type="button" id="t-sent" aria-pressed="true">막힌 문장</button>
+      <button type="button" id="t-phr" aria-pressed="false">담아둘 표현</button>
       <button type="button" id="t-word" aria-pressed="false">모르는 단어</button>
     </div>
     <div class="editing" id="editing" hidden><span>기록 수정 중</span><button type="button" id="edit-cancel">취소</button></div>
@@ -254,6 +267,17 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
         <button class="btn" type="submit" id="s-ai" hidden>AI 코칭 받기</button>
         <button class="btn plain" type="button" id="s-plain">그냥 저장</button>
       </div>
+      <a class="btn ghost" id="s-tr" target="_blank" rel="noopener" style="text-align:center;text-decoration:none" hidden>번역기로 영어 확인하기</a>
+    </form>
+
+    <form id="f-phr" hidden>
+      <label>기억하고 싶은 문장 / 표현
+        <textarea id="p-en" class="en" required placeholder="I'll take a rain check."></textarea></label>
+      <label>뜻 <small id="p-ko-hint">비워두면 AI가 채워요</small>
+        <input id="p-ko" placeholder="다음 기회에 할게"></label>
+      <label>어디서 봤나요 <small>선택. 드라마, 수업, 책 이름 등</small>
+        <input id="p-src" placeholder="예) Friends S1, 노동법 수업"></label>
+      <button class="btn" type="submit" id="p-save">표현 저장</button>
     </form>
 
     <form id="f-word" hidden>
@@ -279,6 +303,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
       <div class="seg small" role="group" aria-label="종류" id="r-type">
         <button type="button" data-f="all" aria-pressed="true">전체</button>
         <button type="button" data-f="sentence" aria-pressed="false">문장</button>
+        <button type="button" data-f="phrase" aria-pressed="false">표현</button>
         <button type="button" data-f="word" aria-pressed="false">단어</button>
       </div>
       <div class="cats" id="r-cats" role="group" aria-label="카테고리"></div>
@@ -309,9 +334,10 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
   <!-- 목록 -->
   <section id="v-list" class="deck" hidden>
     <div class="listbar">
-      <input id="q" type="search" placeholder="단어, 뜻, 문장 검색">
+      <input id="q" type="search" placeholder="영어, 뜻, 상황, 출처 검색">
       <button class="btn ghost" type="button" id="auto-cat" hidden>AI 분류</button>
     </div>
+    <div class="seg small" role="group" aria-label="종류" id="l-type"></div>
     <div class="cats" id="l-cats" role="group" aria-label="카테고리"></div>
     <div class="listbar">
       <div class="cats" id="l-stat" role="group" aria-label="상태" style="flex:1"></div>
@@ -319,9 +345,13 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
         <option value="new">최신순</option>
         <option value="lapse">자주 틀린 순</option>
         <option value="stale">오래 안 본 순</option>
+        <option value="az">ABC 순</option>
+        <option value="old">오래된 순</option>
       </select>
     </div>
+    <div class="lhead"><span id="l-count"></span><button type="button" class="linkbtn" id="l-compact"></button></div>
     <div class="list" id="list"></div>
+    <button class="btn plain" type="button" id="l-more" hidden></button>
   </section>
 </div>
 
@@ -330,8 +360,8 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
   <div class="sheet" role="dialog" aria-label="설정">
     <h2>동기화</h2>
     <div id="acct" class="row"></div>
-    <h2 style="margin-top:8px">AI 코칭</h2>
-    <p>무료 Gemini API 키를 넣으면 코칭, 응용, 일기 교정, 자동 분류가 켜져요. 카드 등록 없이 무료이고, 키는 이 기기에만 저장돼요.</p>
+    <h2 style="margin-top:8px">AI 코칭 <small style="font-weight:400">선택</small></h2>
+    <p>없어도 앱은 다 쓸 수 있어요. 무료 Gemini 키를 한 번 넣어두면 코칭, 응용, 일기 교정이 켜지고, 로그인한 상태면 계정에 저장돼서 다른 기기에서 다시 넣을 필요가 없어요.</p>
     <input id="api-key" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
     <div class="row">
       <button class="btn" type="button" id="key-save">저장하고 연결 확인</button>
@@ -345,7 +375,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
       <label class="btn ghost" style="flex-direction:row;justify-content:center;color:var(--accent);font-size:15px">백업 불러오기<input type="file" id="imp" accept=".csv,text/csv" hidden></label>
       <button class="btn plain" type="button" id="exp">백업 받기</button>
     </div>
-    <p class="tip" style="text-align:center">앱 버전 10/28 00:06</p>
+    <p class="tip" style="text-align:center">앱 버전 11/03 20:52</p>
     <button class="btn plain" type="button" id="set-close">닫기</button>
   </div>
 </div>
@@ -380,7 +410,7 @@ nav .dot{position:absolute;top:6px;left:calc(50% + 8px);min-width:16px;height:16
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { firebaseConfig, AI_MODELS } from "./config.js";
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").then(r => r.update()).catch(() => {});
@@ -418,6 +448,7 @@ const SAMPLES = () => [
   {id:"ex1",type:"sentence",ko:"마감 하루만 늦춰줄 수 있는지 물어보고 싶었어",en:"Would it be possible to get a one-day extension on the deadline?",sit:"교수님께 이메일",cat:"학교",box:0,due:ymd(today()),created:1,sample:true},
   {id:"ex2",type:"sentence",ko:"내가 이해한 게 맞는지 확인하고 싶어",en:"Just to make sure we're on the same page, you mean...",sit:"팀 미팅 중",cat:"일",box:0,due:ymd(today()),created:2,sample:true},
   {id:"ex3",type:"word",en:"reimburse",ko:"(비용을) 환급하다",ex:"The company will reimburse your travel expenses.",cat:"일",box:0,due:ymd(today()),created:3,sample:true},
+  {id:"ex5",type:"phrase",en:"I'll take a rain check.",ko:"다음 기회에 할게",note:"초대를 정중하게 미룰 때",src:"Friends",cat:"대화",box:0,due:ymd(today()),created:5,sample:true},
   {id:"ex4",type:"word",en:"to-go box",ko:"남은 음식 포장 용기",ex:"Could I get a to-go box, please?",cat:"음식",box:0,due:ymd(today()),created:4,sample:true}
 ];
 let items = local.load() || SAMPLES();
@@ -444,8 +475,8 @@ let toastT;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2200) }
 function renderStat(){
   const due = items.filter(isDue).length;
-  const w = items.filter(i=>i.type==="word").length, s = items.filter(i=>i.type==="sentence").length;
-  $("#stat").innerHTML = `복습 <strong>${due}</strong> · 문장 ${s} · 단어 ${w}`;
+  const w = items.filter(i=>i.type==="word").length, s = items.filter(i=>i.type==="sentence").length, ph = items.filter(i=>i.type==="phrase").length;
+  $("#stat").innerHTML = `오늘 복습 <strong>${due}</strong> · 전체 ${s+ph+w}`;
   $("#dot").hidden = !due; $("#dot").textContent = due;
 }
 let view="add";
@@ -514,15 +545,16 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()
 /* ---------- 기록 ---------- */
 let editing=null;
 function setType(t){
-  $("#t-sent").setAttribute("aria-pressed", t==="s"); $("#t-word").setAttribute("aria-pressed", t==="w");
-  $("#f-sent").hidden = t!=="s"; $("#f-word").hidden = t!=="w"; $("#coach").hidden=true;
+  $("#t-sent").setAttribute("aria-pressed", t==="s"); $("#t-phr").setAttribute("aria-pressed", t==="p"); $("#t-word").setAttribute("aria-pressed", t==="w");
+  $("#f-sent").hidden = t!=="s"; $("#f-phr").hidden = t!=="p"; $("#f-word").hidden = t!=="w"; $("#coach").hidden=true;
 }
-$("#t-sent").onclick=()=>setType("s"); $("#t-word").onclick=()=>setType("w");
-function resetForms(){ $("#f-sent").reset(); $("#f-word").reset(); editing=null; $("#editing").hidden=true; $("#coach").hidden=true; $("#coach").innerHTML="" }
+$("#t-sent").onclick=()=>setType("s"); $("#t-phr").onclick=()=>setType("p"); $("#t-word").onclick=()=>setType("w");
+function resetForms(){ $("#f-sent").reset(); $("#f-phr").reset(); $("#f-word").reset(); editing=null; $("#editing").hidden=true; $("#coach").hidden=true; $("#coach").innerHTML="" }
 $("#edit-cancel").onclick=()=>{ resetForms(); go("list") };
 function startEdit(it){
   go("add"); resetForms(); editing=it; $("#editing").hidden=false;
   if(it.type==="sentence"){ setType("s"); $("#s-ko").value=it.ko||""; $("#s-en").value=it.en||""; $("#s-sit").value=it.sit||"" }
+  else if(it.type==="phrase"){ setType("p"); $("#p-en").value=it.en||""; $("#p-ko").value=it.ko||""; $("#p-src").value=it.src||"" }
   else { setType("w"); $("#w-en").value=it.en||""; $("#w-ko").value=it.ko||""; $("#w-ex").value=it.ex||"" }
 }
 function base(type){
@@ -624,6 +656,27 @@ function renderCoach(input,r){
   draw();
 }
 
+$("#f-phr").addEventListener("submit",async e=>{
+  e.preventDefault();
+  let en=$("#p-en").value.trim(), ko=$("#p-ko").value.trim(); const src=$("#p-src").value.trim();
+  if(!en){ $("#p-en").focus(); return }
+  if(!editing && items.some(i=>i.type==="phrase"&&!i.sample&&i.en.toLowerCase()===en.toLowerCase())){ toast("이미 담아둔 표현이에요"); return }
+  let cat=editing?.cat, note=editing?.note||"";
+  if(sample && (!ko || !cat)){
+    const btn=$("#p-save"); btn.disabled=true; btn.textContent="뜻 찾는 중...";
+    try{
+      const r=await sample.json(`A Korean adult learning English saved this English sentence or expression to remember: "${en}"
+Where they saw it (may be empty): ${src||"(none)"}
+Known meaning (may be empty): ${ko||"(none)"}
+Reply with ONLY JSON: {"meaning":"natural Korean meaning, under 40 chars","note":"Korean, under 40 chars: when or how to use it, nuance","category": one of: ${CAT_GUIDE} (name only)}`,{modelTier:"quick"});
+      ko=ko||r.meaning||""; note=note||r.note||""; cat=cat||okCat(r.category);
+    }catch(err){ aiFail(err) }
+    btn.disabled=false; btn.textContent="표현 저장";
+  }
+  await put({...base("phrase"),en,ko,src,note,cat});
+  resetForms(); setType("p"); toast("표현을 담아뒀어요");
+});
+
 $("#f-word").addEventListener("submit",async e=>{
   e.preventDefault();
   let en=$("#w-en").value.trim(), ko=$("#w-ko").value.trim(), ex=$("#w-ex").value.trim();
@@ -649,6 +702,7 @@ const STATS={"전체":()=>true,"별표":i=>!!i.star,"자주 틀림":i=>(i.lapses
 const ICON_STAR='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg>';
 const ICON_L='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>';
 const ICON_R='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+let bShuf=false;
 let mode="today", filter="all", catF="전체", statF="전체", queue=[], done=0, total=0, held=0, flipped=false, bIdx=0, browse=[], tIdx=0;
 const LIMKEY="malmun.limits";
 let lim={nw:10,all:30};
@@ -693,7 +747,7 @@ function startSession(){
   flipped=false;
   $("#limits").hidden = mode!=="today";
   if(mode==="browse"){
-    browse=pool.slice().sort((a,b)=>(b.created||0)-(a.created||0)).map(i=>i.id);
+    browse=(bShuf?shuffle(pool.slice()):pool.slice().sort((a,b)=>(b.created||0)-(a.created||0))).map(i=>i.id);
     bIdx=Math.min(bIdx,Math.max(0,browse.length-1));
     renderCard(); return;
   }
@@ -716,17 +770,19 @@ function toggleStar(orig){
   if(view==="review") renderCard(); else renderList();
 }
 function cardHTML(it,rightLabel){
-  const s=it.type==="sentence";
+  const ph=it.type==="phrase";
+  const s=it.type==="sentence"||(ph&&!!it.ko);
   const kids=s?childrenOf(it):[];
   const parent=it.parentId?items.find(p=>p.id===it.parentId):null;
   const front = s
     ? `<div class="q">${esc(it.ko)}</div>${it.sit?`<div class="sit">${esc(it.sit)}</div>`:""}`
     : `<div class="q en">${esc(it.en)}</div>`;
   const back = s
-    ? `<div class="en">${esc(it.en)}</div>${(it.alts||[]).map(a=>`<div class="alt">${esc(a)}</div>`).join("")}${it.mine&&it.mine!==it.en?`<div class="note">처음 내 표현: ${esc(it.mine)}</div>`:""}${it.pattern?`<div class="note">패턴 · ${esc(it.pattern)}</div>`:""}${kids.map(k=>`<div class="kid">${esc(k.en)}</div>`).join("")}${parent?`<div class="note">원래 문장: ${esc(parent.en)}</div>`:""}`
+    ? `<div class="en">${esc(it.en)}</div>${(it.alts||[]).map(a=>`<div class="alt">${esc(a)}</div>`).join("")}${it.mine&&it.mine!==it.en?`<div class="note">처음 내 표현: ${esc(it.mine)}</div>`:""}${it.pattern?`<div class="note">패턴 · ${esc(it.pattern)}</div>`:""}${kids.map(k=>`<div class="kid">${esc(k.en)}</div>`).join("")}${parent?`<div class="note">원래 문장: ${esc(parent.en)}</div>`:""}${ph&&it.note?`<div class="note">${esc(it.note)}</div>`:""}${ph&&it.src?`<div class="note">출처 · ${esc(it.src)}</div>`:""}`
+    : ph ? `${it.note?`<div class="ko">${esc(it.note)}</div>`:`<div class="note">뜻이 비어 있어요. 목록에서 수정으로 채워보세요.</div>`}${it.src?`<div class="note">출처 · ${esc(it.src)}</div>`:""}`
     : `<div class="ko"><span class="hl">${esc(it.ko)}</span></div>${it.ex?`<div class="ex">${esc(it.ex)}</div>`:""}`;
   return `<div class="card" id="card" tabindex="0" role="button" aria-label="카드 뒤집기">
-      <div class="kind"><span>${s?(it.parentId?"SENTENCE · 응용":"SENTENCE · 영어로 말해보기"):"WORD · 뜻 떠올리기"}${it.cat?" · "+esc(it.cat):""}${(it.lapses||0)>=3?' · <span class="lapse">자주 틀림</span>':""}</span><span>${rightLabel}</span></div>
+      <div class="kind"><span>${ph?(s?"PHRASE · 영어로 떠올리기":"PHRASE · 다시 읽기"):s?(it.parentId?"SENTENCE · 응용":"SENTENCE · 영어로 말해보기"):"WORD · 뜻 떠올리기"}${it.cat?" · "+esc(it.cat):""}${(it.lapses||0)>=3?' · <span class="lapse">자주 틀림</span>':""}</span><span>${rightLabel}</span></div>
       ${front}
       ${flipped?`<div class="a">${back}${said.id===it.id?said.html:""}</div>`:`<div class="hint">${s?"소리 내서 말해보고 탭해서 확인":"탭해서 뜻 보기"}</div>`}
     </div>
@@ -734,7 +790,7 @@ function cardHTML(it,rightLabel){
       <button class="chip star" type="button" id="star" aria-pressed="${!!it.star}">${ICON_STAR}별표</button>
       ${s&&!flipped&&answering!==it.id?`<button class="chip" type="button" id="ans-open">${ICON_MIC}말로 답하기</button>`:""}
       ${(!s||flipped)?`<button class="chip" type="button" id="spk">${ICON_SPK}발음</button><button class="chip" type="button" id="slow">천천히</button>`:""}
-      ${!s&&flipped&&it.ex?`<button class="chip" type="button" id="spk-ex">${ICON_SPK}예문</button>`:""}
+      ${!s&&!ph&&flipped&&it.ex?`<button class="chip" type="button" id="spk-ex">${ICON_SPK}예문</button>`:""}
       ${s&&flipped&&!it.parentId&&(sample||kids.length)?`<button class="chip" type="button" id="var">${ICON_VAR}응용${kids.length?" "+kids.length:""}</button>`:""}
     </div>
     ${s&&!flipped&&answering===it.id?`<div class="ans">
@@ -791,9 +847,12 @@ function renderCard(){
         <button type="button" id="prev" aria-label="이전 카드" ${bIdx===0?"disabled":""}>${ICON_L}</button>
         <div class="pos">${bIdx+1} / ${browse.length} · 밀어서 넘기기</div>
         <button type="button" id="next" aria-label="다음 카드" ${bIdx>=browse.length-1?"disabled":""}>${ICON_R}</button>
-      </div></div>`;
+      </div>
+      <div class="row"><button class="btn plain" type="button" id="b-shuf">${bShuf?"최신순으로 보기":"순서 섞기"}</button><button class="btn plain" type="button" id="b-first">처음으로</button></div></div>`;
     bindCard(it,{toggle:true});
     $("#prev").onclick=()=>move(-1); $("#next").onclick=()=>move(1);
+    $("#b-shuf").onclick=()=>{ bShuf=!bShuf; bIdx=0; startSession() };
+    $("#b-first").onclick=()=>{ bIdx=0; flipped=false; renderCard() };
     return;
   }
   $("#prog").style.width = total ? (done/total*100)+"%" : "0";
@@ -1022,9 +1081,14 @@ async function diaryToCard(e){
 }
 
 /* ---------- 목록 ---------- */
-let pendingDel=null, lcat="전체", lstat="전체";
-$("#q").addEventListener("input",renderList);
-$("#l-sort").addEventListener("change",renderList);
+let pendingDel=null, lcat="전체", lstat="전체", ltype="all", lshown=50, lseed=Math.random();
+const PAGE=50;
+const TYPE_LABEL={sentence:"문장",phrase:"표현",word:"단어"};
+let compact=false; try{ compact=localStorage.getItem("malmun.compact")==="1" }catch(e){}
+$("#q").addEventListener("input",()=>{ lshown=PAGE; renderList() });
+$("#l-sort").addEventListener("change",()=>{ lshown=PAGE; renderList() });
+$("#l-compact").onclick=()=>{ compact=!compact; try{ localStorage.setItem("malmun.compact",compact?"1":"0") }catch(e){}; renderList() };
+$("#l-more").onclick=()=>{ lshown+=PAGE*2; renderList() };
 function weekLabel(ts){
   if(!ts||ts<1e10) return "예시";
   const d=new Date(ts), now=today();
@@ -1034,18 +1098,22 @@ function weekLabel(ts){
   if(d>=lastMon) return "지난주";
   return `${d.getFullYear()}년 ${d.getMonth()+1}월`;
 }
+let hlRe=null;
+const hl=t=>{ const e=esc(t); return hlRe? e.replace(hlRe,m=>`<mark>${m}</mark>`) : e };
 function itemHTML(i,child,sort){
-  const s=i.type==="sentence", nk=s?childrenOf(i).length:0;
+  const s=i.type==="sentence"||i.type==="phrase", nk=s?childrenOf(i).length:0;
   const extra = sort==="stale" ? ` · 마지막 복습 ${i.last?esc(i.last):"아직 없음"}` : ` · 다음 복습 ${esc(i.due)}`;
-  return `<div class="item${child?" child":""}">
+  const sub=[i.ko, i.type==="phrase"?i.src:i.sit].filter(Boolean);
+  return `<div class="item${child?" child":""}" data-row="${i.id}">
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-      <span class="badge ${i.sample?"ex":""}">${i.sample?"예시":child?(i.vtype||"응용"):(i.cat||(s?"문장":"단어"))}</span>
+      <span class="badge ${i.sample?"ex":""}">${i.sample?"예시":child?(i.vtype||"응용"):(i.cat||TYPE_LABEL[i.type])}</span>
       <button class="icon star" type="button" data-star="${i.id}" aria-pressed="${!!i.star}" aria-label="별표">${ICON_STAR}</button>
     </div>
     <div class="body">
-      <div class="t">${i.en?esc(i.en):'<span style="color:var(--bad);font-family:var(--f-body);font-size:14px">영어 아직 비어 있음</span>'}</div>
-      <div class="s">${esc(i.ko)}${i.sit?" · "+esc(i.sit):""}</div>
-      <div class="m">${s?(i.parentId?"응용":"문장"):"단어"}${extra}${i.lapses?` · <span class="lapse">틀림 ${i.lapses}</span>`:""}${nk?` · 응용 ${nk}개`:""}</div>
+      <div class="t">${i.en?hl(i.en):'<span style="color:var(--bad);font-family:var(--f-body);font-size:14px">영어 아직 비어 있음</span>'}</div>
+      <div class="s">${sub.map(hl).join(" · ")}</div>
+      ${i.type==="phrase"&&i.note?`<div class="s">${hl(i.note)}</div>`:""}
+      <div class="m">${i.parentId?"응용":TYPE_LABEL[i.type]}${extra}${i.lapses?` · <span class="lapse">틀림 ${i.lapses}</span>`:""}${nk?` · 응용 ${nk}개`:""}</div>
     </div>
     ${pendingDel===i.id
       ? `<div class="confirm"><button type="button" style="background:var(--bad);color:#fff" data-del="${i.id}">${nk?`응용 ${nk}개 포함 삭제`:"삭제"}</button><button type="button" style="background:var(--line);color:var(--ink)" data-cancel>취소</button></div>`
@@ -1057,31 +1125,54 @@ function itemHTML(i,child,sort){
 }
 function renderList(){
   refreshAIButtons();
-  lcat=catChips($("#l-cats"),lcat,c=>{lcat=c;renderList()},items.filter(i=>i.type!=="diary"));
-  const inCat=items.filter(i=>i.type!=="diary"&&(lcat==="전체"||i.cat===lcat));
-  lstat=statChips($("#l-stat"),lstat,c=>{lstat=c;renderList()},inCat);
+  const all=items.filter(i=>i.type!=="diary");
+  const tcount=t=>all.filter(i=>i.type===t).length;
+  const types=[["all","전체",all.length],["sentence","문장",tcount("sentence")],["phrase","표현",tcount("phrase")],["word","단어",tcount("word")]];
+  $("#l-type").innerHTML=types.map(([k,l,n])=>`<button type="button" data-lt="${k}" aria-pressed="${k===ltype}">${l} ${n}</button>`).join("");
+  $("#l-type").querySelectorAll("button").forEach(b=>b.onclick=()=>{ ltype=b.dataset.lt; lshown=PAGE; renderList() });
+  const typed=all.filter(i=>ltype==="all"||i.type===ltype);
+  lcat=catChips($("#l-cats"),lcat,c=>{lcat=c;lshown=PAGE;renderList()},typed);
+  const inCat=typed.filter(i=>lcat==="전체"||i.cat===lcat);
+  lstat=statChips($("#l-stat"),lstat,c=>{lstat=c;lshown=PAGE;renderList()},inCat);
   const q=$("#q").value.trim().toLowerCase();
-  const rows=inCat.filter(STATS[lstat]).filter(i=>!q||[i.en,i.ko,i.sit,i.ex,...(i.alts||[])].join(" ").toLowerCase().includes(q));
-  if(!rows.length){ $("#list").innerHTML=`<div class="empty"><p>${q?"검색 결과가 없어요":lstat!=="전체"?"이 조건에 맞는 기록이 없어요":"아직 기록이 없어요. 기록 탭에서 첫 문장을 남겨보세요."}</p></div>`; return }
+  hlRe = q ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/&/g,"&amp;"),"gi") : null;
+  const rows=inCat.filter(STATS[lstat]).filter(i=>!q||[i.en,i.ko,i.sit,i.ex,i.src,i.note,i.pattern,...(i.alts||[])].join(" ").toLowerCase().includes(q));
+  $("#list").classList.toggle("compact",compact);
+  $("#l-compact").textContent=compact?"자세히 보기":"한 줄로 보기";
+  $("#l-count").textContent=`${rows.length}개${q?` · "${q}" 검색`:""}`;
+  if(!rows.length){ $("#list").innerHTML=`<div class="empty"><p>${q?"검색 결과가 없어요":lstat!=="전체"?"이 조건에 맞는 기록이 없어요":"아직 기록이 없어요. 기록 탭에서 첫 문장을 남겨보세요."}</p></div>`; $("#l-more").hidden=true; return }
   const sort=$("#l-sort").value;
-  let html="";
-  if(sort==="new"){
-    const ids=new Set(rows.map(r=>r.id)); let last=null;
-    rows.filter(i=>!i.parentId||!ids.has(i.parentId)).sort((a,b)=>(b.created||0)-(a.created||0)).forEach(i=>{
-      const g=weekLabel(i.created); if(g!==last){ html+=`<div class="gh">${g}</div>`; last=g }
-      html+=itemHTML(i,false,sort);
-      rows.filter(k=>k.parentId===i.id).sort((a,b)=>(a.created||0)-(b.created||0)).forEach(k=>html+=itemHTML(k,true,sort));
-    });
+  // 정렬된 "묶음"(원문 + 응용) 목록을 만든 뒤 페이지 단위로 자른다
+  const ids=new Set(rows.map(r=>r.id));
+  let tops, nested=true;
+  if(sort==="new"||sort==="old"){
+    tops=rows.filter(i=>!i.parentId||!ids.has(i.parentId)).sort((a,b)=>sort==="new"?(b.created||0)-(a.created||0):(a.created||0)-(b.created||0));
   } else {
-    const sorted=rows.slice().sort(sort==="lapse"
-      ? (a,b)=>(b.lapses||0)-(a.lapses||0)||(b.created||0)-(a.created||0)
+    nested=false;
+    tops=rows.slice().sort(
+      sort==="lapse" ? (a,b)=>(b.lapses||0)-(a.lapses||0)||(b.created||0)-(a.created||0)
+      : sort==="az" ? (a,b)=>(a.en||"").replace(/^[^a-z0-9]+/i,"").localeCompare((b.en||"").replace(/^[^a-z0-9]+/i,""),"en",{sensitivity:"base"})
       : (a,b)=>(a.last||"").localeCompare(b.last||"")||(a.created||0)-(b.created||0));
-    html=sorted.map(i=>itemHTML(i,false,sort)).join("");
+  }
+  const groupOf = i => sort==="az" ? ((i.en||"#").replace(/^[^a-z0-9]+/i,"")[0]||"#").toUpperCase()
+    : (sort==="new"||sort==="old") ? weekLabel(i.created) : null;
+  const gcount={}; if(groupOf) tops.forEach(i=>{ const g=groupOf(i); if(g) gcount[g]=(gcount[g]||0)+1 });
+  let html="", last=null, shown=0;
+  for(const i of tops){
+    if(shown>=lshown) break;
+    const g=groupOf(i);
+    if(g && g!==last){ html+=`<div class="gh">${esc(g)}<span class="n">${gcount[g]}</span></div>`; last=g }
+    html+=itemHTML(i,false,sort); shown++;
+    if(nested) rows.filter(k=>k.parentId===i.id).sort((a,b)=>(a.created||0)-(b.created||0)).forEach(k=>html+=itemHTML(k,true,sort));
   }
   $("#list").innerHTML=html;
+  const left=tops.length-shown;
+  $("#l-more").hidden=left<=0;
+  $("#l-more").textContent=`더 보기 (남은 ${left}개)`;
 }
 $("#list").addEventListener("click",e=>{
-  const b=e.target.closest("button"); if(!b) return;
+  const b=e.target.closest("button");
+  if(!b){ const r=e.target.closest(".item"); if(r&&compact) r.classList.toggle("open"); return }
   const find=id=>items.find(i=>i.id===id);
   if(b.dataset.say) speak(find(b.dataset.say).en);
   if(b.dataset.var) openVariants(find(b.dataset.var));
@@ -1187,8 +1278,15 @@ function makeAI(key){
   };
   return { json, probe };
 }
+function trSync(){
+  const ko = $("#s-ko").value.trim(), en = $("#s-en").value.trim();
+  $("#s-tr").href = en ? "https://translate.google.com/?sl=en&tl=ko&op=translate&text=" + encodeURIComponent(en) : "https://translate.google.com/?sl=ko&tl=en&op=translate&text=" + encodeURIComponent(ko);
+  $("#s-tr").textContent = en ? "번역기로 내 영어 확인하기" : "번역기로 영어 찾아보기";
+}
+$("#s-ko").addEventListener("input", trSync); $("#s-en").addEventListener("input", trSync);
 function setAI(){
   sample = makeAI(getKey());
+  $("#s-tr").hidden = !!sample; trSync();
   $("#s-ai").hidden = !sample;
   refreshAIButtons();
   if(view==="diary") renderDiary();
@@ -1205,8 +1303,18 @@ function colFor(uid){
   const c = collection(fdb, "users", uid, "malmun");
   return { doc: id => ({ set: d => setDoc(doc(c, id), d), delete: () => deleteDoc(doc(c, id)) }), raw: c };
 }
+const keyDoc = uid => doc(fdb, "users", uid, "meta", "malmun");
+async function pullKey(uid){
+  try{
+    const snap = await getDoc(keyDoc(uid));
+    const k = snap.exists() ? (snap.data().geminiKey || "") : "";
+    if(k && k !== getKey()){ try{ localStorage.setItem(AKEY, k) }catch(e){}; setAI(); keyState() }
+    else if(!k && getKey()) pushKey(getKey());
+  }catch(e){}
+}
+function pushKey(k){ if(me) setDoc(keyDoc(me.uid), { geminiKey: k || "" }, { merge: true }).catch(() => {}) }
 onAuthStateChanged(auth, u => {
-  me = u; renderAcct();
+  me = u; renderAcct(); if(u) pullKey(u.uid);
   if(unsub){ unsub(); unsub = null }
   if(!u){ col = null; items = local.load() || SAMPLES(); $("#sync").textContent = "이 기기에 저장 중"; refresh(); return }
   const c = colFor(u.uid); let first = true;
@@ -1239,14 +1347,14 @@ function keyState(){ const k = getKey(); $("#key-state").textContent = k ? `키 
 $("#open-set").onclick = () => { $("#api-key").value = ""; keyState(); renderAcct(); $("#setsheet").hidden = false };
 $("#set-close").onclick = () => $("#setsheet").hidden = true;
 $("#setsheet").onclick = e => { if(e.target.id === "setsheet") $("#setsheet").hidden = true };
-$("#key-clear").onclick = () => { try{ localStorage.removeItem(AKEY) }catch(e){}; setAI(); keyState(); toast("키를 지웠어요") };
+$("#key-clear").onclick = () => { try{ localStorage.removeItem(AKEY) }catch(e){}; pushKey(""); setAI(); keyState(); toast("키를 지웠어요") };
 $("#key-save").onclick = async () => {
   const k = $("#api-key").value.trim() || getKey();
   if(!k){ $("#api-key").focus(); return }
   const b = $("#key-save"); b.disabled = true; b.textContent = "확인 중...";
   try{
     const best = await makeAI(k).probe();
-    try{ localStorage.setItem(AKEY, k) }catch(e){}
+    try{ localStorage.setItem(AKEY, k) }catch(e){}; pushKey(k);
     setAI(); keyState(); $("#api-key").value = "";
     $("#key-state").textContent += ` · ${best.m} · ${(best.ms / 1000).toFixed(1)}초`;
     toast("AI 코칭이 켜졌어요");
